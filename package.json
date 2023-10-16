@@ -63,5 +63,6 @@
       "dotenv/config"
     ],
     "testEnvironment": "node"
-  }
+  },
+  "packageManager": "yarn@3.6.4"
 }
