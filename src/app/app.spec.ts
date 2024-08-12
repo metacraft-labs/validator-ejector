@@ -1,4 +1,5 @@
 import { makeLogger } from 'lido-nanolib'
+import nock from 'nock'
 import { makeConfig as mC } from '../services/config/service.js'
 import { mockEthServer } from '../test/mock-eth-server.js'
 import * as ELMocks from '../services/execution-api/fixtures.js'
@@ -33,6 +34,12 @@ const mockConfig = async (config) => {
           format: 'simple',
         }
       },
+      makeWebhookProcessorConfig() {
+        return {
+          WEBHOOK_ABORT_TIMEOUT_MS: 10_000,
+          WEBHOOK_MAX_RETRIES: 0,
+        }
+      },
     }
   })
 }
@@ -51,6 +58,10 @@ describe('App bootstrap', () => {
       mockEthServer(mock() as any, configBase.CONSENSUS_NODE)
     })
     vi.resetModules()
+  })
+
+  afterEach(() => {
+    nock.cleanAll()
   })
 
   it('should bootstrap the app with MESSAGES_LOCATION', async () => {

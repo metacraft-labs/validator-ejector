@@ -11,7 +11,11 @@ import { makeJobRunner } from 'lido-nanolib'
 
 import dotenv from 'dotenv'
 
-import { makeConfig, makeLoggerConfig } from '../services/config/service.js'
+import {
+  makeConfig,
+  makeLoggerConfig,
+  makeWebhookProcessorConfig,
+} from '../services/config/service.js'
 import { makeConsensusApi } from '../services/consensus-api/service.js'
 import { makeExecutionApi } from '../services/execution-api/service.js'
 import { makeMetrics, register } from '../services/prom/service.js'
@@ -23,8 +27,9 @@ import { makeJobProcessor } from '../services/job-processor/service.js'
 import { makeWebhookProcessor } from '../services/webhook-caller/service.js'
 import { makeS3Store } from '../services/s3-store/service.js'
 import { makeGsStore } from '../services/gs-store/service.js'
-
 import { makeApp } from './service.js'
+import { makeMessageReloader } from '../services/message-reloader/message-reloader.js'
+import { makeForkVersionResolver } from '../services/fork-version-resolver/service.js'
 
 dotenv.config()
 
@@ -68,6 +73,12 @@ export const makeAppModule = async () => {
     config
   )
 
+  const forkVersionResolver = makeForkVersionResolver(
+    consensusApi,
+    logger,
+    config
+  )
+
   const localFileReader = makeLocalFileReader({ logger })
 
   const s3Service = makeS3Store({ logger })
@@ -83,15 +94,21 @@ export const makeAppModule = async () => {
     gsService,
   })
 
-  const webhookProcessor = makeWebhookProcessor(
-    makeRequest([loggerMiddleware(logger), notOkError(), abort(10_000)]),
+  const webhookConfig = makeWebhookProcessorConfig({ env: process.env })
+
+  const webhookProcessor = makeWebhookProcessor(webhookConfig, logger, metrics)
+
+  const messageReloader = makeMessageReloader({
     logger,
-    metrics
-  )
+    config,
+    messagesProcessor,
+    forkVersionResolver,
+  })
 
   const jobProcessor = makeJobProcessor({
     logger,
     config,
+    messageReloader,
     executionApi,
     consensusApi,
     messagesProcessor,
@@ -102,7 +119,7 @@ export const makeAppModule = async () => {
   const job = makeJobRunner('validator-ejector', {
     config,
     logger,
-    metric: metrics.jobDuration,
+    metric: metrics.jobEjectorCycleDuration,
     handler: jobProcessor.handleJob,
   })
 
@@ -114,7 +131,7 @@ export const makeAppModule = async () => {
     config,
     logger,
     job,
-    messagesProcessor,
+    messageReloader,
     metrics,
     httpHandler,
     executionApi,

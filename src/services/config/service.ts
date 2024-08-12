@@ -63,6 +63,9 @@ export const makeConfig = ({
       optional(() => bool(env.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION)) ??
       false,
     PROM_PREFIX: optional(() => str(env.PROM_PREFIX)),
+
+    FORCE_DENCUN_FORK_MODE:
+      optional(() => bool(env.FORCE_DENCUN_FORK_MODE)) ?? false,
   }
 
   if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {
@@ -80,6 +83,18 @@ export const makeConfig = ({
   return config
 }
 
+export const makeValidationConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
+  const config = {
+    CONSENSUS_NODE: str(
+      env.CONSENSUS_NODE,
+      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
+    ),
+    MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
+    MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
+  }
+  return config
+}
+
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
   const config = {
     LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
@@ -94,6 +109,20 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
   config.LOGGER_SECRETS = config.LOGGER_SECRETS.map(
     (envVar) => envOrFile(env, envVar) ?? envVar
   )
+
+  return config
+}
+
+export const makeWebhookProcessorConfig = ({
+  env,
+}: {
+  env: NodeJS.ProcessEnv
+}) => {
+  const config = {
+    WEBHOOK_ABORT_TIMEOUT_MS:
+      optional(() => num(env.WEBHOOK_ABORT_TIMEOUT_MS)) ?? 10_000,
+    WEBHOOK_MAX_RETRIES: optional(() => num(env.WEBHOOK_MAX_RETRIES)) ?? 0,
+  }
 
   return config
 }

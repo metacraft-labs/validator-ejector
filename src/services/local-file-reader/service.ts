@@ -4,6 +4,11 @@ export type LocalFileReaderService = ReturnType<typeof makeLocalFileReader>
 
 import type { LoggerService } from 'lido-nanolib'
 
+export type MessageFile = {
+  filename: string
+  content: string
+}
+
 export const makeLocalFileReader = ({ logger }: { logger: LoggerService }) => {
   const dirExists = async (path: string) => {
     try {
@@ -21,10 +26,10 @@ export const makeLocalFileReader = ({ logger }: { logger: LoggerService }) => {
 
     const folder = await readdir(path)
 
-    const files: string[] = []
+    const files: MessageFile[] = []
 
     for (const [ix, fileName] of folder.entries()) {
-      logger.info(`${ix + 1}/${folder.length}`)
+      logger.debug(`${ix + 1}/${folder.length}`)
 
       if (!fileName.endsWith('.json')) {
         logger.warn(
@@ -33,7 +38,7 @@ export const makeLocalFileReader = ({ logger }: { logger: LoggerService }) => {
         continue
       }
       const file = await readFile(`${path}/${fileName}`)
-      files.push(file.toString())
+      files.push({ filename: fileName, content: file.toString() })
     }
 
     return files
